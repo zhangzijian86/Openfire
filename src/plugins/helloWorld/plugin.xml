@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>  
+  
+<plugin>  
+    <class>com.helloworld.HelloWorldPlugin</class>  
+    <name>helloWorld</name>  
+    <description>First Openfire Custom Plugin.</description>  
+    <author>zzj</author>  
+    <version>1.0.0</version>  
+    <date>28/09/2016</date>  
+    <minServerVersion>3.9.0</minServerVersion>  
+      
+    <adminconsole>  
+    </adminconsole>  
+  
+</plugin> 
