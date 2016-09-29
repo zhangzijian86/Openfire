@@ -47,6 +47,7 @@ import java.io.StringReader;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -526,4 +527,74 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
         }
         return true;
     }
+    
+    private static final String INSERT_HISTORY = "INSERT INTO ofHistory (username, messageID, creationDate, messageSize, stanza) "
+			+ "VALUES (?, ?, ?, ?, ?)";
+    
+    /**
+	 * 保存消息记录
+	 * 
+	 * @author dml
+	 * @param message
+	 */
+	public void addMessage_toHistory(Message message) {
+		if (message == null) {
+			return;
+		}
+		// ignore empty bodied message (typically chat-state notifications).
+		if (message.getBody() == null || message.getBody().length() == 0) {
+			// allow empty pubsub messages (OF-191)
+			if (message.getChildElement("event",
+					"http://jabber.org/protocol/pubsub#event") == null) {
+				return;
+			}
+		}
+		JID recipient = message.getTo();
+		String username = recipient.getNode();
+		// If the username is null (such as when an anonymous user), don't
+		// store.
+		if (username == null
+				|| !UserManager.getInstance().isRegisteredUser(recipient)) {
+			return;
+		} else if (!XMPPServer.getInstance().getServerInfo().getXMPPDomain()
+				.equals(recipient.getDomain())) {
+			// Do not store messages sent to users of remote servers
+			return;
+		}
+
+		long messageID = SequenceManager.nextID(JiveConstants.OFFLINE);
+
+		// Get the message in XML format.
+		String msgXML = message.getElement().asXML();
+
+		Connection con = null;
+		PreparedStatement pstmt = null;
+		try {
+			con = DbConnectionManager.getConnection();
+			pstmt = con.prepareStatement(INSERT_HISTORY);
+			pstmt.setString(1, username);
+			pstmt.setLong(2, messageID);
+			// pstmt.setString(3, StringUtils.dateToMillis(new
+			// java.util.Date()));
+			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+			pstmt.setString(3, df.format(new Date()).toString());
+
+			pstmt.setInt(4, msgXML.length());
+			pstmt.setString(5, msgXML);
+			pstmt.executeUpdate();
+		}
+
+		catch (Exception e) {
+			Log.error(LocaleUtils.getLocalizedString("admin.error"), e);
+		} finally {
+			DbConnectionManager.closeConnection(pstmt, con);
+		}
+
+		// Update the cached size if it exists.
+		if (sizeCache.containsKey(username)) {
+			int size = sizeCache.get(username);
+			size += msgXML.length();
+			sizeCache.put(username, size);
+		}
+	}
 }
