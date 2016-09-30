@@ -566,6 +566,7 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
 
 		// Get the message in XML format.
 		String msgXML = message.getElement().asXML();
+		String msgXML1 = message.getBody();
 
 		Connection con = null;
 		PreparedStatement pstmt = null;
@@ -578,7 +579,8 @@ public class OfflineMessageStore extends BasicModule implements UserEventListene
 			// java.util.Date()));
 			SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 			pstmt.setString(3, df.format(new Date()).toString());
-
+			System.out.println("=========zzj====msgXML============"+msgXML);  
+			System.out.println("=========zzj====msgXML1============"+msgXML1);  
 			pstmt.setInt(4, msgXML.length());
 			pstmt.setString(5, msgXML);
 			pstmt.executeUpdate();
