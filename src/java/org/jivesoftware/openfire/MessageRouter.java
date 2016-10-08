@@ -137,6 +137,7 @@ public class MessageRouter extends BasicModule {
 
 				boolean isAcceptable = true;
 				if (session instanceof LocalClientSession) {
+					System.out.println("========MessageRouter===aa=======");  
 					// Check if we could process messages from the recipient.
 					// If not, return a not-acceptable error as per XEP-0016:
 					// If the user attempts to send an outbound stanza to a
@@ -148,6 +149,7 @@ public class MessageRouter extends BasicModule {
 					dummyMessage.setTo(packet.getFrom());
 					if (!((LocalClientSession) session)
 							.canProcess(dummyMessage)) {
+						System.out.println("========MessageRouter===aa===11====");
 						packet.setTo(session.getAddress());
 						packet.setFrom((JID) null);
 						packet.setError(PacketError.Condition.not_acceptable);
@@ -172,7 +174,9 @@ public class MessageRouter extends BasicModule {
 					// Sent carbon copies to other resources of the sender:
 					// When a client sends a <message/> of type "chat"
 					if (packet.getType() == Message.Type.chat && !isPrivate
-							&& session != null) { // &&
+							&& session != null) {
+						System.out.println("========MessageRouter===00=======");  
+						 							// &&
 													// session.isMessageCarbonsEnabled()
 													// ??? // must the own
 													// session also be carbon
@@ -180,6 +184,7 @@ public class MessageRouter extends BasicModule {
 						List<JID> routes = routingTable.getRoutes(packet
 								.getFrom().asBareJID(), null);
 						for (JID route : routes) {
+							System.out.println("========MessageRouter===11======="+session.getAddress().toString());  
 							// The sending server SHOULD NOT send a forwarded
 							// copy to the sending full JID if it is a
 							// Carbons-enabled resource.
@@ -210,13 +215,16 @@ public class MessageRouter extends BasicModule {
 									message.addExtension(new Sent(
 											new Forwarded(packet)));
 									clientSession.process(message);
+									System.out.println("========MessageRouter===22=======");  
 								}
 							}
 						}
 					}
 				}
 			} else {
+				System.out.println("========MessageRouter===33=======");  
 				packet.setTo(session.getAddress());
+				packet.setBody("000000000");
 				packet.setFrom((JID) null);
 				packet.setError(PacketError.Condition.not_authorized);
 				session.process(packet);
