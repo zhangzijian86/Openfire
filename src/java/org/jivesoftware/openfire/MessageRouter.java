@@ -37,7 +37,7 @@ import org.xmpp.packet.JID;
 import org.xmpp.packet.Message;
 import org.xmpp.packet.Packet;
 import org.xmpp.packet.PacketError;
-
+import org.dom4j.Element;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.StringTokenizer;
@@ -165,6 +165,21 @@ public class MessageRouter extends BasicModule {
 						routingTable.routePacket(recipientJID, packet, false);
 						OfflineMessageStore oms = new OfflineMessageStore();
 						oms.addMessage_toHistory(packet);
+						
+						// 向客户端发回执
+						Message yuanMessage = packet.createCopy();
+	                    Message receiptMessage = new Message();
+	                    receiptMessage.setTo(yuanMessage.getFrom());
+	                    receiptMessage.setType(Message.Type.normal);
+	                    receiptMessage.setBody("rrrrrrrrrrr");
+	                    System.out.println("0000000000回执内容" + receiptMessage);
+	                    try {
+	                        XMPPServer.getInstance().getPacketDeliverer().deliver(receiptMessage);
+	                        System.out.println("服务端回执成功！");
+	                    } catch (Exception e) {
+	                        e.printStackTrace();
+	                    }
+						
 					} catch (Exception e) {
 						log.error("Failed to route packet: " + packet.toXML(),
 								e);
