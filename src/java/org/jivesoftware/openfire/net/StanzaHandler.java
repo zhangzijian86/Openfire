@@ -214,6 +214,7 @@ public abstract class StanzaHandler {
 
         String tag = doc.getName();
         if ("message".equals(tag)) {
+        	System.out.println("====StanzaHandler====message======");
             Message packet;
             try {
                 packet = new Message(doc, !validateJIDs());
@@ -232,6 +233,7 @@ public abstract class StanzaHandler {
             processMessage(packet);
         }
         else if ("presence".equals(tag)) {
+        	System.out.println("====StanzaHandler====presence======");
             Presence packet;
             try {
                 packet = new Presence(doc, !validateJIDs());
@@ -277,6 +279,7 @@ public abstract class StanzaHandler {
             processPresence(packet);
         }
         else if ("iq".equals(tag)) {
+        	System.out.println("====StanzaHandler====iq======");
             IQ packet;
             try {
                 packet = getIQ(doc);
@@ -307,6 +310,7 @@ public abstract class StanzaHandler {
             processIQ(packet);
         }
         else {
+        	System.out.println("====StanzaHandler====other======");
             if (!processUnknowPacket(doc)) {
                 Log.warn(LocaleUtils.getLocalizedString("admin.error.packet.tag") +
                         doc.asXML());

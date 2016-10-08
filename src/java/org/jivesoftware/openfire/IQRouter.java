@@ -285,6 +285,7 @@ public class IQRouter extends BasicModule {
     }
 
     private void handle(IQ packet) {
+    	System.out.println("====IQRouter====handle======");
         JID recipientJID = packet.getTo();
         // Check if the packet was sent to the server hostname
         if (recipientJID != null && recipientJID.getNode() == null &&

@@ -23,13 +23,20 @@ package org.jivesoftware.openfire.handler;
 import gnu.inet.encoding.Stringprep;
 import gnu.inet.encoding.StringprepException;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.Collections;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.List;
 
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.QName;
+import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.IQHandlerInfo;
 import org.jivesoftware.openfire.PacketException;
 import org.jivesoftware.openfire.XMPPServer;
@@ -44,6 +51,7 @@ import org.jivesoftware.openfire.user.UserAlreadyExistsException;
 import org.jivesoftware.openfire.user.UserManager;
 import org.jivesoftware.openfire.user.UserNotFoundException;
 import org.jivesoftware.util.JiveGlobals;
+import org.jivesoftware.util.LocaleUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.xmpp.forms.DataForm;
@@ -163,9 +171,16 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
         // See if users can change their passwords (default is true).
         canChangePassword = JiveGlobals.getBooleanProperty("register.password", true);
     }
+    
+    private static final String INSERT_OFROSTERGROUPS = "INSERT INTO ofHistory (username, messageID, creationDate, messageSize, stanza) "
+			+ "VALUES (?, ?, ?, ?, ?)";
+    
+    private static final String INSERT_OFROSTER = "INSERT INTO ofHistory (username, messageID, creationDate, messageSize, stanza) "
+			+ "VALUES (?, ?, ?, ?, ?)";
 
     @Override
 	public IQ handleIQ(IQ packet) throws PacketException, UnauthorizedException {
+    	System.out.println("====IQRegisterHandler====000======");
         ClientSession session = sessionManager.getSession(packet.getFrom());
         IQ reply = null;
         // If no session was found then answer an error (if possible)
@@ -181,6 +196,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
             return reply;
         }
         if (IQ.Type.get.equals(packet.getType())) {
+        	System.out.println("====IQRegisterHandler====111====get==");
             // If inband registration is not allowed, return an error.
             if (!registrationEnabled) {
                 reply = IQ.createResultIQ(packet);
@@ -188,9 +204,11 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                 reply.setError(PacketError.Condition.forbidden);
             }
             else {
+            	System.out.println("====IQRegisterHandler====222====get==");
                 reply = IQ.createResultIQ(packet);
                 if (session.getStatus() == Session.STATUS_AUTHENTICATED) {
                     try {
+                    	System.out.println("====IQRegisterHandler====333====get==");
                         User user = userManager.getUser(session.getUsername());
                         Element currentRegistration = probeResult.createCopy();
                         currentRegistration.addElement("registered");
@@ -216,7 +234,9 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                                         .addText(user.getEmail() == null ? "" : user.getEmail());
                             }
                         }
+                        System.out.println("====IQRegisterHandler====444====get==");
                         reply.setChildElement(currentRegistration);
+                        System.out.println("====IQRegisterHandler====555====get==");
                     }
                     catch (UserNotFoundException e) {
                         reply.setChildElement(probeResult.createCopy());
@@ -233,6 +253,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
             }
         }
         else if (IQ.Type.set.equals(packet.getType())) {
+        	System.out.println("====IQRegisterHandler====666====set==");
             try {
                 Element iqElement = packet.getChildElement();
                 if (iqElement.element("remove") != null) {
@@ -244,6 +265,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                     }
                     else {
                         if (session.getStatus() == Session.STATUS_AUTHENTICATED) {
+                        	System.out.println("====IQRegisterHandler====777====set==");
                             User user = userManager.getUser(session.getUsername());
                             // Delete the user
                             userManager.deleteUser(user);
@@ -263,6 +285,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                                 sess.deliverRawText(error.toXML());
                                 sess.close();
                             }
+                            System.out.println("====IQRegisterHandler====888====set==");
                             // The reply has been sent so clean up the variable
                             reply = null;
                         }
@@ -272,6 +295,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                     }
                 }
                 else {
+                	System.out.println("====IQRegisterHandler====999====set==");
                     String username;
                     String password = null;
                     String email = null;
@@ -283,6 +307,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                     Element formElement = iqElement.element("x");
                     // Check if a form was used to provide the registration info
                     if (formElement != null) {
+                    	System.out.println("====IQRegisterHandler====aaa====set==");
                         // Get the sent form
                         registrationForm = new DataForm(formElement);
                         // Get the username sent in the form
@@ -308,6 +333,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                         }
                     }
                     else {
+                    	System.out.println("====IQRegisterHandler====bbb====set==");
                         // Get the registration info from the query elements
                         username = iqElement.elementText("username");
                         password = iqElement.elementText("password");
@@ -328,6 +354,7 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                     }
 
                     if (session.getStatus() == Session.STATUS_AUTHENTICATED) {
+                    	System.out.println("====IQRegisterHandler====ccc====set==");
                         // Flag that indicates if the user is *only* changing his password
                         boolean onlyPassword = false;
                         if (iqElement.elements().size() == 2 &&
@@ -374,32 +401,104 @@ public class IQRegisterHandler extends IQHandler implements ServerFeaturesProvid
                         }
                     }
                     else {
+                    	System.out.println("====IQRegisterHandler====ddd==00==set==");
                         // If inband registration is not allowed, return an error.
                         if (!registrationEnabled) {
+                        	System.out.println("====IQRegisterHandler====ddd==11==set==");
                             reply = IQ.createResultIQ(packet);
                             reply.setChildElement(packet.getChildElement().createCopy());
                             reply.setError(PacketError.Condition.forbidden);
+                            System.out.println("====IQRegisterHandler====ddd==22==set==");
                             return reply;
                         }
                         // Inform the entity of failed registration if some required
                         // information was not provided
                         else if (password == null || password.trim().length() == 0) {
+                        	System.out.println("====IQRegisterHandler====ddd==33==set==");
                             reply = IQ.createResultIQ(packet);
                             reply.setChildElement(packet.getChildElement().createCopy());
                             reply.setError(PacketError.Condition.not_acceptable);
+                            System.out.println("====IQRegisterHandler====ddd==44==set==");
                             return reply;
                         }
                         else {
                             // Create the new account
+                        	System.out.println("====IQRegisterHandler====ddd==55==set==");
+                        	int rosterID = 0;
                             newUser = userManager.createUser(username, password, name, email);
+                            Connection con = null;
+                    		PreparedStatement pstmt = null;
+                    		ResultSet rs = null;
+                    		try {
+                    		    con = DbConnectionManager.getConnection();
+                    		    pstmt = con.prepareStatement("select max(rosterID)+1 from ofRoster");
+                    		    rs = pstmt.executeQuery();
+                    		    if(rs.next()) {
+                    		    	rosterID = rs.getInt(1);
+                    		    	System.out.println("====IQRegisterHandler====ddd==66==set=="+rs.getInt(1));
+                    		    }
+            				    if(rosterID==0){
+            						rosterID=1;
+            					}
+            	                if(rosterID!=0){  
+            	                	pstmt = null;
+            	                	String sql1 = "insert into ofRoster(rosterID,username,jid,sub,ask,recv,nick)values"
+            	                			+ "('"+rosterID+"','"+username+"','specialfrienduser@zzj','3','-1','-1','specialfrienduser')";
+            	                    pstmt = con.prepareStatement(sql1);
+            	                    pstmt.executeUpdate();
+            	                    pstmt = null;
+                    		    	String sql2 = "insert into ofRosterGroups(rosterID,rank,groupName)values('"+rosterID+"','0','SpecialFriend')"; 
+                    		    	pstmt = con.prepareStatement(sql2);
+                    		    	pstmt.executeUpdate();
+                    		    	
+                       		    	rosterID = rosterID + 1;
+                    		    	pstmt = null;
+            	                	String sql3 = "insert into ofRoster(rosterID,username,jid,sub,ask,recv,nick)values"
+            	                			+ "('"+rosterID+"','specialfrienduser','"+username+"@zzj','3','-1','-1','"+username+"')";
+            	                    pstmt = con.prepareStatement(sql3);
+            	                    pstmt.executeUpdate();
+            	                    pstmt = null;
+                    		    	String sql4 = "insert into ofRosterGroups(rosterID,rank,groupName)values('"+rosterID+"','0','Friends')"; 
+                    		    	pstmt = con.prepareStatement(sql4);
+                    		    	pstmt.executeUpdate();      
+                    		    	
+                    		    	rosterID = rosterID + 1;
+                    		    	pstmt = null;
+            	                	String sql5 = "insert into ofRoster(rosterID,username,jid,sub,ask,recv,nick)values"
+            	                			+ "('"+rosterID+"','"+username+"','ordinaryfrienduser@zzj','3','-1','-1','ordinaryfrienduser')";
+            	                    pstmt = con.prepareStatement(sql5);
+            	                    pstmt.executeUpdate();           	                    
+            	                    pstmt = null;
+                    		    	String sql6 = "insert into ofRosterGroups(rosterID,rank,groupName)values('"+rosterID+"','0','OrdinaryFriend')"; 
+                    		    	pstmt = con.prepareStatement(sql6);
+                    		    	pstmt.executeUpdate();
+                    		    	
+                    		    	rosterID = rosterID + 1;
+                       		    	pstmt = null;
+            	                	String sql7 = "insert into ofRoster(rosterID,username,jid,sub,ask,recv,nick)values"
+            	                			+ "('"+rosterID+"','ordinaryfrienduser','"+username+"@zzj','3','-1','-1','"+username+"')";
+            	                    pstmt = con.prepareStatement(sql7);
+            	                    pstmt.executeUpdate();
+            	                    pstmt = null;
+                    		    	String sql8 = "insert into ofRosterGroups(rosterID,rank,groupName)values('"+rosterID+"','0','Friends')"; 
+                    		    	pstmt = con.prepareStatement(sql8);
+                    		    	pstmt.executeUpdate();            	                	
+            	                }
+                    		}
+                    		catch (SQLException sqle) {
+                    			System.out.println("====IQRegisterHandler====ddd==cc==set=="+sqle.getMessage());
+                    		    Log.error(sqle.getMessage(), sqle);
+                    		}
+                            System.out.println("====IQRegisterHandler====ddd==dd==set==");
                         }
                     }
                     // Set and save the extra user info (e.g. full name, etc.)
                     if (newUser != null && name != null && !name.equals(newUser.getName())) {
                         newUser.setName(name);
                     }
-
+                    System.out.println("====IQRegisterHandler====eee====set==");
                     reply = IQ.createResultIQ(packet);
+                    System.out.println("====IQRegisterHandler====fff====set==");
                 }
             }
             catch (UserAlreadyExistsException e) {
