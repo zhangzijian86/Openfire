@@ -239,7 +239,7 @@ public class MessageRouter extends BasicModule {
 			} else {
 				System.out.println("========MessageRouter===33=======");  
 				packet.setTo(session.getAddress());
-				packet.setBody("000000000");
+				packet.setBody("----000000000----");
 				packet.setFrom((JID) null);
 				packet.setError(PacketError.Condition.not_authorized);
 				session.process(packet);
