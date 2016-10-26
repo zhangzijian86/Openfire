@@ -92,8 +92,6 @@
 	<classpathentry kind="lib" path="src/plugins/gojara/lib/json.jar"/>
 	<classpathentry kind="lib" path="src/plugins/kraken/lib/concurrent.jar"/>
 	<classpathentry kind="lib" path="src/plugins/kraken/lib/dwr.jar"/>
-	<classpathentry kind="lib" path="src/plugins/kraken/lib/httpclient.jar"/>
-	<classpathentry kind="lib" path="src/plugins/kraken/lib/httpcore.jar"/>
 	<classpathentry kind="lib" path="src/plugins/kraken/lib/jainsipapi.jar"/>
 	<classpathentry kind="lib" path="src/plugins/kraken/lib/jainsipri.jar"/>
 	<classpathentry kind="lib" path="src/plugins/kraken/lib/jakarta-regexp.jar"/>
@@ -176,5 +174,7 @@
 	<classpathentry kind="lib" path="src/plugins/rayo/lib/en_us.jar"/>
 	<classpathentry kind="lib" path="build/lib/merge/jetty-annotations.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
+	<classpathentry kind="lib" path="work/lib/httpclient-4.5.jar"/>
+	<classpathentry kind="lib" path="work/lib/httpcore-4.4.1.jar"/>
 	<classpathentry kind="output" path="work/classes"/>
 </classpath>

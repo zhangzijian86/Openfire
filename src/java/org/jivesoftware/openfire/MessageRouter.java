@@ -20,6 +20,14 @@
 
 package org.jivesoftware.openfire;
 
+import org.apache.http.HttpEntity;
+import org.apache.http.NameValuePair;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpPost;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.message.BasicNameValuePair;
 import org.dom4j.QName;
 import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.carbons.Sent;
@@ -41,6 +49,8 @@ import org.xmpp.packet.PacketError;
 import org.dom4j.Element;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.URL;
@@ -50,7 +60,9 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.StringTokenizer;
 
@@ -70,6 +82,9 @@ import java.util.StringTokenizer;
 public class MessageRouter extends BasicModule {
 
 	private static Logger log = LoggerFactory.getLogger(MessageRouter.class);
+	
+	 //默认传输编码
+    public static String ENCODING = "UTF8";	
 
 	private OfflineMessageStrategy messageStrategy;
 	private RoutingTable routingTable;
@@ -278,34 +293,16 @@ public class MessageRouter extends BasicModule {
 				} catch (SQLException e) {
 					e.printStackTrace();
 				}
-				DbConnectionManager.closeConnection(pstmt, con);
+
 				if(!flag){
-					PrintWriter out = null;  
-//				    BufferedReader in = null;  
-				    try {  
-				        URL realUrl = new URL(postUrl);  
-				        // 打开和URL之间的连接  
-				        URLConnection conn = realUrl.openConnection();  
-				        // 设置通用的请求属性  
-				        conn.setRequestProperty("accept", "*/*");  
-				        conn.setRequestProperty("connection", "Keep-Alive");  
-				        conn.setRequestProperty("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)");  
-				              
-				        conn.setDoOutput(true);// 发送POST请求必须设置如下两行  
-				        conn.setDoInput(true);  
-				              
-				        out = new PrintWriter(conn.getOutputStream());// 获取URLConnection对象对应的输出流s  
-				        out.print("action=code&username=zwzfj2&userpass=lglp112522&mobiles="+phonenumber+"&content="+result+"&codeid=3907");// 发送请求参数  
-				        out.flush();// flush输出流的缓冲  
-//				        in = new BufferedReader(new InputStreamReader(conn.getInputStream()));// 定义BufferedReader输入流来读取URL的响应  
-//				        String line;  
-//			            while ((line = in.readLine()) != null) {  		                
-//			            }  
-				        System.out.println("====check=========99=========="+result);
-				    } catch (Exception e) {  
-				        System.out.println("发送POST请求出现异常！" + e);  
-				        e.printStackTrace();  
-				    }  	
+					 Map<String,String> map = new HashMap<String,String>();
+					 map.put("action","code");
+					 map.put("username","zwzfj2");
+					 map.put("userpass","lglp112522");
+					 map.put("mobiles",phonenumber);
+					 map.put("content",result+"");
+					 map.put("codeid", "3907");
+					 String aa = httpPost(postUrl, map);
 				}
 				
 				packet.setTo(session.getAddress());
@@ -339,6 +336,78 @@ public class MessageRouter extends BasicModule {
 			}
 		}
 	}
+	
+	 /**
+     * Http Post 封装
+     * @param url 请求的url地址
+     * @param paras 参数集合
+     * @return String 返回结果:字符串
+     *
+     */
+    public static String httpPost(String url,Map<String,String> paras){
+
+        //初始化返回结果
+        String resultStr = null;
+        try{
+            //创建安全的httpClient
+            CloseableHttpClient httpClient = HttpClients.createDefault();
+
+            //根据参数集合构造表单列表
+            List<NameValuePair> formParas = new ArrayList<NameValuePair>();
+            if(paras != null){
+                for(String key :paras.keySet()){
+                    formParas.add(new BasicNameValuePair(key,paras.get(key)));
+                }
+            }
+
+            //对表单进行编码格式化
+            UrlEncodedFormEntity entity = new UrlEncodedFormEntity(formParas, ENCODING);
+
+            //初始化post
+            HttpPost httpPost = new HttpPost(url);
+
+            //设置post内容
+            httpPost.setEntity(entity);
+
+            //初始化安全的HttpResponse
+            CloseableHttpResponse httpResponse = httpClient.execute(httpPost);
+            try{
+                //执行请求
+                HttpEntity httpEntity = httpResponse.getEntity();
+
+                //获取请求结果
+                if(httpEntity!= null){
+                    //利用缓冲区,获取返回结果输入流并读取
+                    InputStream inputStream = httpEntity.getContent();
+                    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                    try{
+                        byte[] buffer = new byte[1024];
+                        int length;
+                        while((length = inputStream.read(buffer))!= -1){
+                            bos.write(buffer,0,length);
+                        }
+                        byte[] result = bos.toByteArray();
+
+                        //将获取到的字节数据结果转换为字符串
+                        resultStr = new String(result,ENCODING);
+                        System.out.println(resultStr);
+                    }catch (Exception e){
+                        System.out.println(e.getMessage());
+                    }finally {
+                        //关闭输入流
+                        inputStream.close();
+                    }
+                }
+            }catch (Exception e){
+                System.out.println(e.getMessage());
+            }finally {
+                httpResponse.close();
+            }
+        }catch (Exception e){
+            System.out.println(e.getMessage());
+        }
+        return  resultStr;
+    }
 
 	/**
 	 * Forwards the received message to the list of users defined in the
