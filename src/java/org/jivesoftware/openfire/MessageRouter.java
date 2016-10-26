@@ -21,6 +21,7 @@
 package org.jivesoftware.openfire;
 
 import org.dom4j.QName;
+import org.jivesoftware.database.DbConnectionManager;
 import org.jivesoftware.openfire.carbons.Sent;
 import org.jivesoftware.openfire.container.BasicModule;
 import org.jivesoftware.openfire.forward.Forwarded;
@@ -38,8 +39,19 @@ import org.xmpp.packet.Message;
 import org.xmpp.packet.Packet;
 import org.xmpp.packet.PacketError;
 import org.dom4j.Element;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.io.PrintWriter;
+import java.net.URL;
+import java.net.URLConnection;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.StringTokenizer;
 
 /**
@@ -237,9 +249,72 @@ public class MessageRouter extends BasicModule {
 					}
 				}
 			} else {
-				System.out.println("========MessageRouter===33=======");  
+				System.out.println("========MessageRouter===33======="+packet.getBody().toString());  			
+				
+				String phonenumber = "";
+				
+				phonenumber = packet.getBody().toString();
+				
+				Random rd = new Random();
+				int result =rd.nextInt(900000)+100000;
+				String postUrl="http://sms.jiangukj.com/SendSms.aspx";
+				
+				boolean flag = false;
+				
+				Connection con = null;
+				PreparedStatement pstmt = null;
+				ResultSet rs = null;				
+				try {	
+					con = DbConnectionManager.getConnection();
+					pstmt=con.prepareStatement("select * from ofUser where username=?");
+					pstmt.setString(1,phonenumber);
+					System.out.println("====check=========77==========");
+					rs=pstmt.executeQuery();
+					if (rs.next())
+					{
+						System.out.println("====check=========88==========");
+						flag = true;
+					}
+				} catch (SQLException e) {
+					e.printStackTrace();
+				}
+				DbConnectionManager.closeConnection(pstmt, con);
+				if(!flag){
+					PrintWriter out = null;  
+//				    BufferedReader in = null;  
+				    try {  
+				        URL realUrl = new URL(postUrl);  
+				        // 打开和URL之间的连接  
+				        URLConnection conn = realUrl.openConnection();  
+				        // 设置通用的请求属性  
+				        conn.setRequestProperty("accept", "*/*");  
+				        conn.setRequestProperty("connection", "Keep-Alive");  
+				        conn.setRequestProperty("user-agent", "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1)");  
+				              
+				        conn.setDoOutput(true);// 发送POST请求必须设置如下两行  
+				        conn.setDoInput(true);  
+				              
+				        out = new PrintWriter(conn.getOutputStream());// 获取URLConnection对象对应的输出流s  
+				        out.print("action=code&username=zwzfj2&userpass=lglp112522&mobiles="+phonenumber+"&content="+result+"&codeid=3907");// 发送请求参数  
+				        out.flush();// flush输出流的缓冲  
+//				        in = new BufferedReader(new InputStreamReader(conn.getInputStream()));// 定义BufferedReader输入流来读取URL的响应  
+//				        String line;  
+//			            while ((line = in.readLine()) != null) {  		                
+//			            }  
+				        System.out.println("====check=========99=========="+result);
+				    } catch (Exception e) {  
+				        System.out.println("发送POST请求出现异常！" + e);  
+				        e.printStackTrace();  
+				    }  	
+				}
+				
 				packet.setTo(session.getAddress());
-				packet.setBody("----000000000----");
+				if(!flag){
+					packet.setBody("Verify:Unregistered:"+result);
+				}else{
+					packet.setBody("Verify:HasRegistered");
+				}
+				
 				packet.setFrom((JID) null);
 				packet.setError(PacketError.Condition.not_authorized);
 				session.process(packet);
