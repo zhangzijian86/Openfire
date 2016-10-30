@@ -39,6 +39,8 @@ import org.jivesoftware.openfire.session.ClientSession;
 import org.jivesoftware.openfire.session.LocalClientSession;
 import org.jivesoftware.openfire.session.Session;
 import org.jivesoftware.openfire.user.UserManager;
+import org.jivesoftware.util.Blowfish;
+import org.jivesoftware.util.Encryptor;
 import org.jivesoftware.util.JiveGlobals;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -59,7 +61,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -264,57 +268,138 @@ public class MessageRouter extends BasicModule {
 					}
 				}
 			} else {
-				System.out.println("========MessageRouter===33======="+packet.getBody().toString());  			
+				System.out.println("========MessageRouter===33======="+packet.getBody().toString());  	
 				
-				String phonenumber = "";
+//				Blowfish bf = new Blowfish("56t1ij4tiOETyJs");
+//				System.out.println("========MessageRouter===33===password==1=="
+//				+bf.decryptString("a4534ae8dd9a9323dfcde08b89c09cd6f556c9a67835c987d588b5e7b21a5f7b"));
+//				
+//				System.out.println("========MessageRouter===33===mingma===="
+//						+bf.encryptString("12345678"));
+//				
+//				System.out.println("========MessageRouter===33===password==1=="
+//						+bf.decryptString(bf.encryptString("12345678")));				
 				
-				phonenumber = packet.getBody().toString();
-				
-				Random rd = new Random();
-				int result =rd.nextInt(900000)+100000;
-				String postUrl="http://sms.jiangukj.com/SendSms.aspx";
-				
-				boolean flag = false;
-				
-				Connection con = null;
-				PreparedStatement pstmt = null;
-				ResultSet rs = null;				
-				try {	
-					con = DbConnectionManager.getConnection();
-					pstmt=con.prepareStatement("select * from ofUser where username=?");
-					pstmt.setString(1,phonenumber);
-					System.out.println("====check=========77==========");
-					rs=pstmt.executeQuery();
-					if (rs.next())
-					{
-						System.out.println("====check=========88==========");
-						flag = true;
+				if(packet.getBody().toString().startsWith("Verify:")||packet.getBody().toString().startsWith("Forget:")){
+					String phonenumber = "";
+					if(packet.getBody().toString().startsWith("Verify:")){
+						System.out.println("====Verify:====");
+						phonenumber = packet.getBody().toString().replace("Verify:", "");
+					}else if(packet.getBody().toString().startsWith("Forget:")){
+						System.out.println("====Forget:====");
+						phonenumber = packet.getBody().toString().replace("Forget:", "");
 					}
-				} catch (SQLException e) {
-					e.printStackTrace();
+					System.out.println("========MessageRouter===33======="+phonenumber); 
+					
+					Random rd = new Random();
+					int result =rd.nextInt(900000)+100000;
+					String postUrl="http://sms.jiangukj.com/SendSms.aspx";
+					
+					boolean flag = false;
+					
+					Connection con = null;
+					PreparedStatement pstmt = null;
+					ResultSet rs = null;				
+					try {	
+						con = DbConnectionManager.getConnection();
+						pstmt=con.prepareStatement("select * from ofUser where username=?");
+						pstmt.setString(1,phonenumber);
+						System.out.println("====check=========77==========");
+						rs=pstmt.executeQuery();
+						if (rs.next())
+						{
+							System.out.println("====check=========88==========");
+							flag = true;
+						}
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}finally {
+						DbConnectionManager.closeConnection(pstmt, con);
+					}
+	
+					if(!flag){
+						 Map<String,String> map = new HashMap<String,String>();
+						 map.put("action","code");
+						 map.put("username","zwzfj2");
+						 map.put("userpass","lglp112522");
+						 map.put("mobiles",phonenumber);
+						 map.put("content",result+"");
+						 map.put("codeid", "3907");
+						 //String aa = httpPost(postUrl, map);
+					}
+					
+					packet.setTo(session.getAddress());
+					
+					if(packet.getBody().toString().startsWith("Verify:")){
+						System.out.println("====Verify:==111==");
+						if(!flag){
+							packet.setBody("Verify:Unregistered:"+result);
+						}else{
+							packet.setBody("Verify:HasRegistered");
+						}
+					}else if(packet.getBody().toString().startsWith("Forget:")){
+						System.out.println("====Forget:====");
+						if(!flag){
+							packet.setBody("Forget:Unregistered");
+						}else{
+							packet.setBody("Forget:HasRegistered:"+result);
+						}
+					}
+					
+					packet.setFrom((JID) null);
+					packet.setError(PacketError.Condition.not_authorized);
+					session.process(packet);
 				}
+				if(packet.getBody().toString().startsWith("ChangePassword:")){
+					String newStrs = packet.getBody().toString().replace("ChangePassword:", "");
+					System.out.println("====check=========Forget:ChangePassword======newStrs===="+newStrs);
+					String nPhone = newStrs.split("&")[0];
+					String nPassword = newStrs.split("&")[1];
+					System.out.println("====check=========Forget:ChangePassword======nPhone===="+nPhone);
+					System.out.println("====check=========Forget:ChangePassword======nPassword===="+nPassword);
+					Connection con = null;
+					PreparedStatement pstmt = null;
+					ResultSet rs = null;	
+					String encryptedPassword = "";
+					try {	
+						con = DbConnectionManager.getConnection();
+						pstmt=con.prepareStatement("select propValue  from ofProperty where name = 'passwordKey'");						
+						System.out.println("====check=========Forget:ChangePassword======11====");
+						rs=pstmt.executeQuery();
+						if (rs.next())
+						{
+							encryptedPassword = rs.getString(1);
+							System.out.println("====check=========Forget:ChangePassword====22======"+rs.getString(1));							
+						}												
 
-				if(!flag){
-					 Map<String,String> map = new HashMap<String,String>();
-					 map.put("action","code");
-					 map.put("username","zwzfj2");
-					 map.put("userpass","lglp112522");
-					 map.put("mobiles",phonenumber);
-					 map.put("content",result+"");
-					 map.put("codeid", "3907");
-					 String aa = httpPost(postUrl, map);
+					} catch (SQLException e) {
+						e.printStackTrace();
+					}finally {
+						DbConnectionManager.closeConnection(pstmt, con);
+					}
+					
+					Blowfish bf = new Blowfish(encryptedPassword);
+					String newPassword = bf.encryptString(nPassword);				
+					
+					Connection con1 = null;
+					PreparedStatement pstmt1 = null;
+					try {
+						System.out.println("====check=========Forget:ChangePassword====333======");			
+						con1 = DbConnectionManager.getConnection();
+						pstmt1 = con1.prepareStatement("update ofUser set encryptedPassword = '"+newPassword+"' where username = '"+nPhone+"'");	
+						System.out.println("====check=========Forget:ChangePassword====44======");			
+						pstmt1.executeUpdate();
+					}catch (SQLException e) {
+						e.printStackTrace();
+					}finally {
+						DbConnectionManager.closeConnection(pstmt1, con1);
+					}
+					packet.setTo(session.getAddress());
+					packet.setBody("ChangePassword:OK");
+					packet.setFrom((JID) null);
+					packet.setError(PacketError.Condition.not_authorized);
+					session.process(packet);						
 				}
-				
-				packet.setTo(session.getAddress());
-				if(!flag){
-					packet.setBody("Verify:Unregistered:"+result);
-				}else{
-					packet.setBody("Verify:HasRegistered");
-				}
-				
-				packet.setFrom((JID) null);
-				packet.setError(PacketError.Condition.not_authorized);
-				session.process(packet);
 			}
 			// Invoke the interceptors after we have processed the read packet
 			InterceptorManager.getInstance().invokeInterceptors(packet,
