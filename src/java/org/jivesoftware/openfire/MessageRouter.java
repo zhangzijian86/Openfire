@@ -268,8 +268,65 @@ public class MessageRouter extends BasicModule {
 					}
 				}
 			} else {
-				System.out.println("========MessageRouter===33======="+packet.getBody().toString());  	
-				
+				System.out.println("========MessageRouter===33====11==222="+packet.getBody().toString()+"====");  	
+				System.out.println("========MessageRouter===33====11==333="+(packet.getBody().toString().indexOf("setCurrentLocation")>=0));
+				if(packet.getBody().toString().indexOf("setCurrentLocation")>=0){
+					System.out.println("====setCurrentLocation===111===");		
+					String phoneNumber = "";
+					String latitude="";
+					String longitude="";
+					String address="";
+					
+					String message = packet.getBody().toString().replace("setCurrentLocation:", "");
+					String messageStrs[] = message.split("&");
+					if(messageStrs.length>=1&&messageStrs[0]!=null&&!messageStrs[0].toString().equals("")){
+						String phoneStrs[] = messageStrs[0].split(":");
+						if(phoneStrs.length>=2&&phoneStrs[1]!=null&&!phoneStrs[1].toString().equals("")){
+							phoneNumber = phoneStrs[1].toString();
+						}
+					}
+					if(messageStrs.length>=2&&messageStrs[1]!=null&&!messageStrs[1].toString().equals("")){
+						String latitudeStrs[] = messageStrs[1].split(":");
+						if(latitudeStrs.length>=2&&latitudeStrs[1]!=null&&!latitudeStrs[1].toString().equals("")){
+							latitude = latitudeStrs[1].toString();
+						}
+					}
+					if(messageStrs.length>=3&&messageStrs[2]!=null&&!messageStrs[2].toString().equals("")){
+						String longitudeStrs[] = messageStrs[2].split(":");
+						if(longitudeStrs.length>=2&&longitudeStrs[1]!=null&&!longitudeStrs[1].toString().equals("")){
+							longitude = longitudeStrs[1].toString();
+						}
+					}
+					if(messageStrs.length>=4&&messageStrs[3]!=null&&!messageStrs[3].toString().equals("")){
+						System.out.println("====setCurrentLocation===messageStrs[3]==="+messageStrs[3]);	
+						String addressStrs[] = messageStrs[3].split(":");
+						if(addressStrs.length>=2&&addressStrs[1]!=null&&!addressStrs[1].toString().equals("")){
+							address = addressStrs[1].toString();
+						}
+					}
+					System.out.println("==setCurrentLocation=phoneNumber="+phoneNumber+"=latitude="+latitude+
+							"=longitude="+longitude+"=address="+address);					
+					if(phoneNumber!=null&&!phoneNumber.equals("")){
+						System.out.println("====setCurrentLocation===222===");	
+						Connection con1 = null;
+						PreparedStatement pstmt1 = null;
+						try {
+							System.out.println("====setCurrentLocation=========333====");			
+							con1 = DbConnectionManager.getConnection();
+							SimpleDateFormat df = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+							pstmt1 = con1.prepareStatement("insert into ofLocation(username,latitude,longitude,address,createtime)values('"
+							+phoneNumber+"','"+latitude+"','"+longitude+"','"+address+"','"+df.format(new Date()).toString()+"')");	
+							System.out.println("====setCurrentLocation=========333===="+"insert into ofLocation(username,latitude,longitude,address,createtime)values('"
+									+phoneNumber+"','"+latitude+"','"+longitude+"','"+address+"','"+df.format(new Date()).toString()+"')");					
+							pstmt1.executeUpdate();
+						}catch (SQLException e) {
+							e.printStackTrace();
+						}finally {
+							DbConnectionManager.closeConnection(pstmt1, con1);
+						}
+					}
+				}
+				System.out.println("====MessageRouter===aaa==bbb=");		
 //				Blowfish bf = new Blowfish("56t1ij4tiOETyJs");
 //				System.out.println("========MessageRouter===33===password==1=="
 //				+bf.decryptString("a4534ae8dd9a9323dfcde08b89c09cd6f556c9a67835c987d588b5e7b21a5f7b"));
@@ -405,6 +462,7 @@ public class MessageRouter extends BasicModule {
 			InterceptorManager.getInstance().invokeInterceptors(packet,
 					session, true, true);
 		} catch (PacketRejectedException e) {
+			System.out.println("====Exception=========999==========");
 			// An interceptor rejected this packet
 			if (session != null && e.getRejectionMessage() != null
 					&& e.getRejectionMessage().trim().length() > 0) {
